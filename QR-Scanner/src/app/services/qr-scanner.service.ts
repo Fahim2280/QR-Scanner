@@ -75,14 +75,18 @@ export class QrScannerService {
    */
   async getVideoDevices(): Promise<MediaDeviceInfo[]> {
     // Check if running in browser environment
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+    if (
+      typeof navigator === 'undefined' ||
+      !navigator.mediaDevices ||
+      !navigator.mediaDevices.enumerateDevices
+    ) {
       console.warn('Media devices not available in this context');
       return [];
     }
-  
+
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      return devices.filter(device => device.kind === 'videoinput');
+      return devices.filter((device) => device.kind === 'videoinput');
     } catch (error) {
       console.warn('Error accessing video devices:', error);
       // Fallback: return an empty array indicating no devices available

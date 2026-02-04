@@ -1,25 +1,45 @@
 .qr-scanner-container {
-  max-width: 500px;
-  margin: 0 auto;
-  padding: 20px;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
   text-align: center;
-}
-
-.scanner-area {
-  position: relative;
-  margin: 20px auto;
-  width: 100%;
-  max-width: 350px;
-  height: 350px;
-  border: 2px solid #007bff;
-  border-radius: 10px;
+  position: fixed;
+  top: 0;
+  left: 0;
   overflow: hidden;
 }
 
-.scanner-area video {
+.scanner-area {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  border: 3px solid #007bff;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 123, 255, 0.3);
+  background: #000;
+  display: block;
+}
+
+.scanner-element {
   width: 100%;
   height: 100%;
+  display: block;
   object-fit: cover;
+  background: #000;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Force the video element inside zxing-scanner to fill the container */
+::ng-deep .scanner-element video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
 }
 
 .scanner-overlay {
@@ -29,47 +49,101 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
-  background-image: linear-gradient(
-      transparent 0%,
-      transparent 30%,
-      rgba(0, 123, 255, 0.3) 30%,
-      rgba(0, 123, 255, 0.3) 70%,
-      transparent 70%,
-      transparent 100%
-    ),
-    linear-gradient(
-      to right,
-      transparent 0%,
-      transparent 30%,
-      rgba(0, 123, 255, 0.3) 30%,
-      rgba(0, 123, 255, 0.3) 70%,
-      transparent 70%,
-      transparent 100%
-    );
+  /* Corner markers */
+  border: 2px solid transparent;
+  z-index: 10;
+}
+
+.scanner-overlay::before,
+.scanner-overlay::after {
+  content: '';
+  position: absolute;
+  width: 25px;
+  height: 25px;
+  border: 3px solid #007bff;
+}
+
+.scanner-overlay::before {
+  top: 20px;
+  left: 20px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.scanner-overlay::after {
+  top: 20px;
+  right: 20px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.scanner-overlay .bottom-left {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  width: 25px;
+  height: 25px;
+  border: 3px solid #007bff;
+  border-top: none;
+  border-right: none;
+}
+
+.scanner-overlay .bottom-right {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 25px;
+  height: 25px;
+  border: 3px solid #007bff;
+  border-top: none;
+  border-left: none;
 }
 
 .scan-line {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-  background: #ff4757;
-  box-shadow: 0 0 10px rgba(255, 71, 87, 0.8);
+  top: 25%;
+  left: 15%;
+  width: 70%;
+  height: 3px;
+  background: #00ff00;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
   animation: scan 2s infinite linear;
+  border-radius: 2px;
 }
 
 @keyframes scan {
   0% {
-    top: 0;
+    top: 25%;
+    opacity: 0.3;
+  }
+  50% {
+    top: 75%;
+    opacity: 1;
   }
   100% {
-    top: calc(100% - 4px);
+    top: 25%;
+    opacity: 0.3;
   }
 }
 
+.qr-scanner-container h2 {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  margin: 0;
+}
+
 .controls {
-  margin: 20px 0;
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  margin: 0;
 }
 
 .btn {
@@ -91,6 +165,15 @@
 
 .btn-primary:hover:not(:disabled) {
   background-color: #0056b3;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #545b62;
 }
 
 .btn-primary:disabled {
@@ -135,11 +218,22 @@
 }
 
 .result {
-  margin-top: 20px;
-  padding: 15px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  background-color: #f8f9fa;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 20px;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: white;
+  z-index: 100;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.result h3 {
+  color: #ffffff;
+  margin-top: 0;
 }
 
 .result-data {
@@ -147,35 +241,60 @@
   font-family: monospace;
   font-size: 14px;
   padding: 10px;
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #000;
   border-radius: 4px;
   margin: 10px 0;
 }
 
 .loading,
 .error {
-  padding: 15px;
-  margin: 10px 0;
-  border-radius: 5px;
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 15px 30px;
+  margin: 0;
+  border-radius: 8px;
+  z-index: 100;
+  min-width: 200px;
+  text-align: center;
 }
 
 .loading {
-  background-color: #d1ecf1;
+  background-color: rgba(209, 236, 241, 0.95);
   color: #0c5460;
 }
 
 .error {
-  background-color: #f8d7da;
+  background-color: rgba(248, 215, 218, 0.95);
   color: #721c24;
 }
 
 .camera-selection {
-  margin: 15px 0;
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 10px 20px;
+  border-radius: 8px;
+  color: white;
+  margin: 0;
+}
+
+.camera-selection label {
+  color: white;
 }
 
 .camera-selection select {
   margin-left: 10px;
-  padding: 5px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: none;
+  background-color: white;
+  cursor: pointer;
 }
 
 .navigation {
@@ -195,4 +314,15 @@
 
 .nav-link:hover {
   background-color: #0056b3;
+}
+
+.ssr-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: white;
+  font-size: 18px;
+  text-align: center;
+  padding: 20px;
 }

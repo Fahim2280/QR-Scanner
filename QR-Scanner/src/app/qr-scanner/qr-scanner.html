@@ -2,24 +2,27 @@
   <h2>QR Scanner</h2>
 
   <!-- Loading indicator -->
-  <div *ngIf="isLoading" class="loading">
+  <div *ngIf="isLoading()" class="loading">
     <p>Loading camera...</p>
   </div>
 
   <!-- Error message -->
-  <div *ngIf="errorMessage" class="error">
-    <p>{{ errorMessage }}</p>
+  <div *ngIf="errorMessage()" class="error">
+    <p>{{ errorMessage() }}</p>
   </div>
 
   <!-- ZXing Scanner Component -->
-  <div class="scanner-area">
+  <div class="scanner-area" *ngIf="isBrowser() && hasCameraSupport()">
     <zxing-scanner
       [formats]="formats"
-      [device]="currentDevice"
+      [device]="currentDevice()"
       (scanSuccess)="onScanSuccess($event)"
       (camerasFound)="onCamerasFound($event)"
       (cameraError)="onCameraError($event)"
+      (permissionResponse)="onPermissionResponse($event)"
       [autostart]="true"
+      [enable]="hasCameraSupport() && !errorMessage()"
+      [tryHarder]="true"
       class="scanner-element"
     >
     </zxing-scanner>
@@ -27,36 +30,79 @@
     <!-- Scanner overlay -->
     <div class="scanner-overlay">
       <div class="scan-line"></div>
+      <div class="bottom-left"></div>
+      <div class="bottom-right"></div>
+    </div>
+  </div>
+
+  <!-- Show message when not in browser -->
+  <div class="scanner-area" *ngIf="!isBrowser()">
+    <div class="ssr-message">
+      <p>
+        Scanner is not available in server-side environment. Please access this page directly in
+        your browser.
+      </p>
+      <button
+        class="btn btn-primary"
+        (click)="forceBrowserMode()"
+        style="margin-top: 20px; margin-right: 10px"
+      >
+        Force Browser Mode
+      </button>
+      <button class="btn btn-secondary" (click)="manualInitialize()" style="margin-top: 20px">
+        Manual Initialize
+      </button>
+    </div>
+  </div>
+
+  <!-- Show message when camera is not supported -->
+  <div class="scanner-area" *ngIf="isBrowser() && !hasCameraSupport() && !isLoading()">
+    <div class="ssr-message">
+      <p>Camera not available. Please check:</p>
+      <ul style="text-align: left; margin: 1rem auto; max-width: 300px">
+        <li>Camera is connected and enabled</li>
+        <li>Browser permissions are granted for camera access</li>
+        <li>You're using a secure connection (HTTPS) or localhost</li>
+      </ul>
+      <button
+        class="btn btn-primary"
+        (click)="refreshCameraCheck()"
+        style="margin-top: 20px; margin-right: 10px"
+      >
+        Refresh Camera Check
+      </button>
+      <button class="btn btn-secondary" (click)="refreshScanner()" style="margin-top: 20px">
+        Refresh Scanner
+      </button>
     </div>
   </div>
 
   <!-- Camera selection -->
-  <div *ngIf="availableDevices.length > 1" class="camera-selection">
+  <div *ngIf="availableDevices().length > 1 && !isLoading() && currentDevice()" class="camera-selection">
     <label for="camera-select">Select Camera:</label>
-    <select id="camera-select" (change)="onDeviceSelected($event)">
+    <select id="camera-select" (change)="onDeviceSelected($event)" [value]="currentDevice()?.deviceId">
       <option
-        *ngFor="let device of availableDevices; let i = index"
-        [value]="i"
-        [selected]="device === currentDevice"
+        *ngFor="let device of availableDevices()"
+        [value]="device.deviceId"
       >
-        {{ device.label || 'Camera ' + (i + 1) }}
+        {{ device.label || 'Camera (' + device.deviceId.substring(0, 5) + '...)' }}
       </option>
     </select>
   </div>
 
   <!-- Controls -->
   <div class="controls">
-    <button *ngIf="qrResult" (click)="resetScanner()" class="btn btn-reset">Scan Again</button>
+    <button *ngIf="qrResult()" (click)="resetScanner()" class="btn btn-reset">Scan Again</button>
   </div>
 
   <!-- Result display -->
-  <div *ngIf="qrResult" class="result">
+  <div *ngIf="qrResult()" class="result">
     <h3>Scanned Result:</h3>
-    <p class="result-data">{{ qrResult }}</p>
+    <p class="result-data">{{ qrResult() }}</p>
 
     <!-- Show action buttons based on result type -->
     <div class="result-actions">
-      <button (click)="visitLink(qrResult)" class="btn btn-link" *ngIf="isValidUrl(qrResult)">
+      <button (click)="visitLink(qrResult())" class="btn btn-link" *ngIf="isValidUrl(qrResult())">
         Visit Link
       </button>
     </div>
