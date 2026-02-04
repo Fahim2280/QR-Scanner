@@ -35,7 +35,6 @@
     "@zxing/library": "^0.21.3",
     "@zxing/ngx-scanner": "^21.0.0",
     "express": "^5.1.0",
-    "jsqr": "^1.4.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

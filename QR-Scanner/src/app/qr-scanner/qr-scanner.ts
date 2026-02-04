@@ -41,7 +41,7 @@ export class QrScannerComponent implements OnInit {
 
   // Add permission signal
   hasPermission = signal<boolean | null>(null);
-  
+
   // Track if user manually selected a device to avoid overwriting it
   private userHasSelectedDevice = false;
 
@@ -80,7 +80,7 @@ export class QrScannerComponent implements OnInit {
 
   private checkCameraSupport() {
     console.log('Checking camera support...');
-    
+
     // Check if the browser supports getUserMedia
     if (navigator?.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
       this.hasCameraSupport.set(true);
@@ -88,7 +88,8 @@ export class QrScannerComponent implements OnInit {
       console.log('Camera API supported - ready to initialize');
     } else {
       this.hasCameraSupport.set(false);
-      const errorMsg = 'Camera access is not supported in this browser. Please use a modern browser with camera support.';
+      const errorMsg =
+        'Camera access is not supported in this browser. Please use a modern browser with camera support.';
       this.errorMessage.set(errorMsg);
       this.isLoading.set(false);
       console.error('getUserMedia is not supported');
@@ -98,12 +99,21 @@ export class QrScannerComponent implements OnInit {
   onCamerasFound(devices: MediaDeviceInfo[]) {
     console.log('Cameras found:', devices.length, devices);
     this.availableDevices.set(devices);
-    this.isLoading.set(false);
-    
+
     if (devices && devices.length > 0) {
+      // Clear any previous camera-related errors when cameras are found
+      const currentError = this.errorMessage();
+      if (currentError && (
+        currentError.includes('No camera') ||
+        currentError.includes('camera is already in use') ||
+        currentError.includes('does not support')
+      )) {
+        this.errorMessage.set(null);
+      }
+      
       // If user hasn't selected a device, or current device is no longer available
       const current = this.currentDevice();
-      const stillAvailable = current ? devices.some(d => d.deviceId === current.deviceId) : false;
+      const stillAvailable = current ? devices.some((d) => d.deviceId === current.deviceId) : false;
 
       if (!this.userHasSelectedDevice || !stillAvailable) {
         console.log('Setting default camera...');
@@ -112,29 +122,88 @@ export class QrScannerComponent implements OnInit {
       } else {
         console.log('Keeping existing camera selection:', current?.label);
       }
+      
+      // Camera found, stop loading
+      this.isLoading.set(false);
     } else {
-      this.errorMessage.set('No cameras found on this device');
+      this.errorMessage.set('No cameras found on this device. Please connect a camera and refresh.');
       console.error('No cameras available');
+      this.isLoading.set(false);
     }
   }
 
   onCameraError(error: any) {
-    this.errorMessage.set('Camera error: ' + (error?.message || 'Unable to access camera'));
     console.error('Camera error:', error);
+    
+    // Provide more specific error messages based on error type
+    let errorMsg = 'Unable to access camera';
+    
+    if (error?.name) {
+      switch (error.name) {
+        case 'NotAllowedError':
+        case 'PermissionDeniedError':
+          errorMsg = 'Camera permission denied. Please allow camera access in your browser settings.';
+          this.hasPermission.set(false);
+          break;
+        case 'NotFoundError':
+        case 'DevicesNotFoundError':
+          errorMsg = 'No camera found. Please ensure a camera is connected and try again.';
+          break;
+        case 'NotReadableError':
+        case 'TrackStartError':
+          errorMsg = 'Camera is already in use by another application. Please close other apps using the camera.';
+          break;
+        case 'OverconstrainedError':
+        case 'ConstraintNotSatisfiedError':
+          errorMsg = 'Camera does not support the required settings. Trying alternative camera...';
+          // Try to switch to another camera if available
+          this.tryAlternativeCamera();
+          break;
+        case 'NotSupportedError':
+          errorMsg = 'Camera access is not supported in this browser.';
+          break;
+        default:
+          errorMsg = `Camera error: ${error?.message || error?.name || 'Unknown error'}`;
+      }
+    } else if (error?.message) {
+      errorMsg = `Camera error: ${error.message}`;
+    }
+    
+    this.errorMessage.set(errorMsg);
     this.isLoading.set(false);
+  }
+  
+  private tryAlternativeCamera() {
+    const devices = this.availableDevices();
+    if (devices.length > 1) {
+      const current = this.currentDevice();
+      const alternative = devices.find(d => d.deviceId !== current?.deviceId);
+      if (alternative) {
+        console.log('Trying alternative camera:', alternative.label);
+        setTimeout(() => {
+          this.currentDevice.set(alternative);
+          this.errorMessage.set(null);
+          this.isLoading.set(true);
+        }, 500);
+      }
+    }
   }
 
   onPermissionResponse(permission: boolean) {
     console.log('Camera permission response:', permission);
     this.hasPermission.set(permission);
-    
-    if (permission) {
-      console.log('Camera permission granted - scanner should initialize now');
-      // Don't set loading to false here - wait for camerasFound event
-    } else {
-      this.errorMessage.set('Camera permission denied. Please allow camera access to use the scanner.');
+
+    if (!permission) {
+      this.errorMessage.set(
+        'Camera permission denied. Please allow camera access in your browser settings and refresh the page.'
+      );
       this.isLoading.set(false);
       console.error('Camera permission denied by user');
+    } else {
+      // Permission granted, clear any permission-related errors
+      if (this.errorMessage()?.includes('permission')) {
+        this.errorMessage.set(null);
+      }
     }
   }
 
@@ -151,10 +220,10 @@ export class QrScannerComponent implements OnInit {
   onDeviceSelected(event: any) {
     const selectedDeviceId = event.target.value;
     console.log('User selecting device by ID:', selectedDeviceId);
-    
+
     const devices = this.availableDevices();
-    const device = devices.find(d => d.deviceId === selectedDeviceId);
-    
+    const device = devices.find((d) => d.deviceId === selectedDeviceId);
+
     if (device) {
       this.currentDevice.set(device);
       this.userHasSelectedDevice = true;
@@ -245,12 +314,35 @@ export class QrScannerComponent implements OnInit {
     console.log('Refreshing scanner...');
     // Reset states to trigger re-initialization
     this.isLoading.set(true);
-    this.hasCameraSupport.set(false);
     this.errorMessage.set(null);
+    this.hasPermission.set(null);
+    this.userHasSelectedDevice = false;
+    this.currentDevice.set(undefined);
+    this.availableDevices.set([]);
 
     // Re-check camera support
     setTimeout(() => {
       this.checkCameraSupport();
     }, 100);
+  }
+  
+  reconnectCamera() {
+    console.log('Reconnecting camera...');
+    this.isLoading.set(true);
+    this.errorMessage.set(null);
+    
+    // Reset current device to trigger reconnection
+    const current = this.currentDevice();
+    if (current) {
+      // Temporarily clear device to force reconnection
+      this.currentDevice.set(undefined);
+      setTimeout(() => {
+        this.currentDevice.set(current);
+        this.isLoading.set(false);
+      }, 300);
+    } else {
+      // If no device selected, try to get devices again
+      this.refreshScanner();
+    }
   }
 }

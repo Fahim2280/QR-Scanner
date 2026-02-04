@@ -228,7 +228,13 @@
   color: white;
   z-index: 100;
   max-height: 40vh;
-  overflow-y: auto;
+  overflow-y: auto; 
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .result h3 {

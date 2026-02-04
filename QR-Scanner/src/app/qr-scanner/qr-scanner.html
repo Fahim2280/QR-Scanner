@@ -9,6 +9,14 @@
   <!-- Error message -->
   <div *ngIf="errorMessage()" class="error">
     <p>{{ errorMessage() }}</p>
+    <button
+      *ngIf="isBrowser() && hasCameraSupport()"
+      class="btn btn-primary"
+      (click)="reconnectCamera()"
+      style="margin-top: 10px"
+    >
+      Try Again
+    </button>
   </div>
 
   <!-- ZXing Scanner Component -->
@@ -21,7 +29,7 @@
       (cameraError)="onCameraError($event)"
       (permissionResponse)="onPermissionResponse($event)"
       [autostart]="true"
-      [enable]="hasCameraSupport() && !errorMessage()"
+      [enable]="hasCameraSupport() && currentDevice() !== undefined && hasPermission() !== false"
       [tryHarder]="true"
       class="scanner-element"
     >
@@ -71,29 +79,36 @@
       >
         Refresh Camera Check
       </button>
-      <button class="btn btn-secondary" (click)="refreshScanner()" style="margin-top: 20px">
+      <button class="btn btn-secondary" (click)="refreshScanner()" style="margin-top: 20px; margin-right: 10px">
         Refresh Scanner
+      </button>
+      <button class="btn btn-tertiary" (click)="reconnectCamera()" style="margin-top: 20px">
+        Reconnect Camera
       </button>
     </div>
   </div>
 
   <!-- Camera selection -->
-  <div *ngIf="availableDevices().length > 1 && !isLoading() && currentDevice()" class="camera-selection">
+  <div
+    *ngIf="availableDevices().length > 1 && !isLoading() && currentDevice()"
+    class="camera-selection"
+  >
     <label for="camera-select">Select Camera:</label>
-    <select id="camera-select" (change)="onDeviceSelected($event)" [value]="currentDevice()?.deviceId">
-      <option
-        *ngFor="let device of availableDevices()"
-        [value]="device.deviceId"
-      >
+    <select
+      id="camera-select"
+      (change)="onDeviceSelected($event)"
+      [value]="currentDevice()?.deviceId"
+    >
+      <option *ngFor="let device of availableDevices()" [value]="device.deviceId">
         {{ device.label || 'Camera (' + device.deviceId.substring(0, 5) + '...)' }}
       </option>
     </select>
   </div>
 
   <!-- Controls -->
-  <div class="controls">
+  <!-- <div class="controls">
     <button *ngIf="qrResult()" (click)="resetScanner()" class="btn btn-reset">Scan Again</button>
-  </div>
+  </div> -->
 
   <!-- Result display -->
   <div *ngIf="qrResult()" class="result">
@@ -105,6 +120,9 @@
       <button (click)="visitLink(qrResult())" class="btn btn-link" *ngIf="isValidUrl(qrResult())">
         Visit Link
       </button>
+      <button (click)="resetScanner()" class="btn btn-reset">Remove</button>
     </div>
+
+    
   </div>
 </div>
