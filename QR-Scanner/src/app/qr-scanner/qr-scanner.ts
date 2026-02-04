@@ -26,17 +26,25 @@ export class QrScannerComponent implements OnInit, OnDestroy {
   constructor(private qrScannerService: QrScannerService, private router: Router) {}
 
   async ngOnInit() {
-    this.isLoading = true;
-    try {
-      this.videoDevices = await this.qrScannerService.getVideoDevices();
-      if (this.videoDevices.length > 0) {
-        this.selectedDeviceId = this.videoDevices[0].deviceId;
+    // Check if running in browser environment
+    if (typeof window !== 'undefined') {
+      this.isLoading = true;
+      try {
+        this.videoDevices = await this.qrScannerService.getVideoDevices();
+        if (this.videoDevices.length > 0) {
+          this.selectedDeviceId = this.videoDevices[0].deviceId;
+        }
+      } catch (error) {
+        this.errorMessage = 'Camera access denied or not available.';
+        console.error('Error getting video devices:', error);
+      } finally {
+        this.isLoading = false;
       }
-    } catch (error) {
-      this.errorMessage = 'Camera access denied or not available.';
-      console.error('Error getting video devices:', error);
-    } finally {
+    } else {
+      // Running on server side - set appropriate defaults
+      this.videoDevices = [];
       this.isLoading = false;
+      console.warn('QR Scanner is not available in server-side environment');
     }
   }
 
@@ -47,6 +55,12 @@ export class QrScannerComponent implements OnInit, OnDestroy {
   }
 
   async startScanning() {
+    // Check if running in browser environment
+    if (typeof window === 'undefined') {
+      this.errorMessage = 'QR Scanner is not available in this environment.';
+      return;
+    }
+
     if (!this.video) {
       return;
     }
@@ -100,14 +114,16 @@ export class QrScannerComponent implements OnInit, OnDestroy {
       isValidUrl = false;
     }
 
-    if (isValidUrl) {
-      // If it's a URL, show an option to navigate to it
-      if (confirm(`QR Code contains URL: ${data}\n\nDo you want to visit this link?`)) {
-        window.open(data, '_blank');
+    if (typeof window !== 'undefined') {
+      if (isValidUrl) {
+        // If it's a URL, show an option to navigate to it
+        if (confirm(`QR Code contains URL: ${data}\n\nDo you want to visit this link?`)) {
+          window.open(data, '_blank');
+        }
+      } else {
+        // Display other types of data
+        alert(`QR Code Data: ${data}`);
       }
-    } else {
-      // Display other types of data
-      alert(`QR Code Data: ${data}`);
     }
   }
 
@@ -150,7 +166,7 @@ export class QrScannerComponent implements OnInit, OnDestroy {
   }
 
   visitLink(urlString: string | null) {
-    if (urlString && this.isValidUrl(urlString)) {
+    if (typeof window !== 'undefined' && urlString && this.isValidUrl(urlString)) {
       window.open(urlString, '_blank');
     }
   }

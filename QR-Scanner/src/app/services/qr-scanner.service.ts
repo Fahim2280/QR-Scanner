@@ -74,12 +74,20 @@ export class QrScannerService {
    * @returns Promise resolving to array of MediaDeviceInfo objects
    */
   async getVideoDevices(): Promise<MediaDeviceInfo[]> {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-      throw new Error('enumerateDevices() not supported.');
+    // Check if running in browser environment
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+      console.warn('Media devices not available in this context');
+      return [];
     }
-
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    return devices.filter((device) => device.kind === 'videoinput');
+  
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return devices.filter(device => device.kind === 'videoinput');
+    } catch (error) {
+      console.warn('Error accessing video devices:', error);
+      // Fallback: return an empty array indicating no devices available
+      return [];
+    }
   }
 
   /**
@@ -89,6 +97,11 @@ export class QrScannerService {
    * @returns Promise resolving when video stream is ready
    */
   async setupVideoStream(videoElement: HTMLVideoElement, deviceId?: string): Promise<void> {
+    // Check if running in browser environment
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+      throw new Error('Media devices not available in this context');
+    }
+
     const constraints: MediaStreamConstraints = {
       video: deviceId ? { deviceId: { exact: deviceId } } : true,
     };
