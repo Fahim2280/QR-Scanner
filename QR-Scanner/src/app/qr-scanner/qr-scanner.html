@@ -1,0 +1,73 @@
+<div class="qr-scanner-container">
+  <h2>QR Scanner</h2>
+
+  <!-- Loading indicator -->
+  <div *ngIf="isLoading" class="loading">
+    <p>Loading camera...</p>
+  </div>
+
+  <!-- Error message -->
+  <div *ngIf="errorMessage" class="error">
+    <p>{{ errorMessage }}</p>
+  </div>
+
+  <!-- Camera selection -->
+  <div *ngIf="videoDevices.length > 1 && !scanningActive" class="camera-selection">
+    <label for="camera-select">Select Camera:</label>
+    <select id="camera-select" (change)="onDeviceChange($event)">
+      <option *ngFor="let device of videoDevices" [value]="device.deviceId">
+        {{ device.label || 'Camera ' + (videoDevices.indexOf(device) + 1) }}
+      </option>
+    </select>
+  </div>
+
+  <!-- Video feed -->
+  <div class="scanner-area">
+    <video #video autoplay playsinline *ngIf="scanningActive"></video>
+    <canvas #canvas style="display: none"></canvas>
+
+    <!-- Scanner overlay -->
+    <div class="scanner-overlay" *ngIf="scanningActive">
+      <div class="scan-line"></div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button
+      *ngIf="!scanningActive && !isLoading"
+      (click)="startScanning()"
+      class="btn btn-primary"
+      [disabled]="videoDevices.length === 0"
+    >
+      {{ videoDevices.length > 0 ? 'Start Scanning' : 'No Camera Available' }}
+    </button>
+
+    <button *ngIf="scanningActive" (click)="stopScanning()" class="btn btn-secondary">
+      Stop Scanning
+    </button>
+
+    <button
+      *ngIf="scanningActive && videoDevices.length > 1"
+      (click)="switchCamera()"
+      class="btn btn-tertiary"
+    >
+      Switch Camera
+    </button>
+
+    <button *ngIf="qrResult" (click)="resetScanner()" class="btn btn-reset">Scan Again</button>
+  </div>
+
+  <!-- Result display -->
+  <div *ngIf="qrResult" class="result">
+    <h3>Scanned Result:</h3>
+    <p class="result-data">{{ qrResult }}</p>
+
+    <!-- Show action buttons based on result type -->
+    <div class="result-actions">
+      <button (click)="visitLink(qrResult)" class="btn btn-link" *ngIf="isValidUrl(qrResult)">
+        Visit Link
+      </button>
+    </div>
+  </div>
+</div>
