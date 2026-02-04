@@ -11,50 +11,41 @@
     <p>{{ errorMessage }}</p>
   </div>
 
-  <!-- Camera selection -->
-  <div *ngIf="videoDevices.length > 1 && !scanningActive" class="camera-selection">
-    <label for="camera-select">Select Camera:</label>
-    <select id="camera-select" (change)="onDeviceChange($event)">
-      <option *ngFor="let device of videoDevices" [value]="device.deviceId">
-        {{ device.label || 'Camera ' + (videoDevices.indexOf(device) + 1) }}
-      </option>
-    </select>
-  </div>
-
-  <!-- Video feed -->
+  <!-- ZXing Scanner Component -->
   <div class="scanner-area">
-    <video #video autoplay playsinline *ngIf="scanningActive"></video>
-    <canvas #canvas style="display: none"></canvas>
+    <zxing-scanner
+      [formats]="formats"
+      [device]="currentDevice"
+      (scanSuccess)="onScanSuccess($event)"
+      (camerasFound)="onCamerasFound($event)"
+      (cameraError)="onCameraError($event)"
+      [autostart]="true"
+      class="scanner-element"
+    >
+    </zxing-scanner>
 
     <!-- Scanner overlay -->
-    <div class="scanner-overlay" *ngIf="scanningActive">
+    <div class="scanner-overlay">
       <div class="scan-line"></div>
     </div>
   </div>
 
+  <!-- Camera selection -->
+  <div *ngIf="availableDevices.length > 1" class="camera-selection">
+    <label for="camera-select">Select Camera:</label>
+    <select id="camera-select" (change)="onDeviceSelected($event)">
+      <option
+        *ngFor="let device of availableDevices; let i = index"
+        [value]="i"
+        [selected]="device === currentDevice"
+      >
+        {{ device.label || 'Camera ' + (i + 1) }}
+      </option>
+    </select>
+  </div>
+
   <!-- Controls -->
   <div class="controls">
-    <button
-      *ngIf="!scanningActive && !isLoading"
-      (click)="startScanning()"
-      class="btn btn-primary"
-      [disabled]="videoDevices.length === 0"
-    >
-      {{ videoDevices.length > 0 ? 'Start Scanning' : 'No Camera Available' }}
-    </button>
-
-    <button *ngIf="scanningActive" (click)="stopScanning()" class="btn btn-secondary">
-      Stop Scanning
-    </button>
-
-    <button
-      *ngIf="scanningActive && videoDevices.length > 1"
-      (click)="switchCamera()"
-      class="btn btn-tertiary"
-    >
-      Switch Camera
-    </button>
-
     <button *ngIf="qrResult" (click)="resetScanner()" class="btn btn-reset">Scan Again</button>
   </div>
 

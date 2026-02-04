@@ -1,107 +1,68 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { QrScannerService } from '../services/qr-scanner.service';
+import { ZXingScannerModule } from '@zxing/ngx-scanner';
+import { BarcodeFormat } from '@zxing/library';
 import { QrCode, QrScanResult, QrCodeType } from '../models/qr-code.model';
 import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-qr-scanner',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ZXingScannerModule, FormsModule],
   templateUrl: './qr-scanner.html',
   styleUrls: ['./qr-scanner.css'],
 })
-export class QrScannerComponent implements OnInit, OnDestroy {
-  @ViewChild('video') video!: ElementRef<HTMLVideoElement>;
-  @ViewChild('canvas') canvas!: ElementRef<HTMLCanvasElement>;
+export class QrScannerComponent implements OnInit {
+  availableDevices: MediaDeviceInfo[] = [];
+  currentDevice: MediaDeviceInfo | undefined;
+
+  formats: BarcodeFormat[] = [BarcodeFormat.QR_CODE];
 
   qrResult: string | null = null;
-  scanningActive = false;
-  videoDevices: MediaDeviceInfo[] = [];
-  selectedDeviceId: string | undefined;
   errorMessage: string | null = null;
   isLoading = false;
 
-  constructor(private qrScannerService: QrScannerService, private router: Router) {}
+  constructor(private router: Router) {}
 
-  async ngOnInit() {
+  ngOnInit() {
     // Check if running in browser environment
     if (typeof window !== 'undefined') {
-      this.isLoading = true;
-      try {
-        this.videoDevices = await this.qrScannerService.getVideoDevices();
-        if (this.videoDevices.length > 0) {
-          this.selectedDeviceId = this.videoDevices[0].deviceId;
-        }
-      } catch (error) {
-        this.errorMessage = 'Camera access denied or not available.';
-        console.error('Error getting video devices:', error);
-      } finally {
-        this.isLoading = false;
-      }
+      console.log('QR Scanner initialized in browser');
     } else {
-      // Running on server side - set appropriate defaults
-      this.videoDevices = [];
-      this.isLoading = false;
       console.warn('QR Scanner is not available in server-side environment');
     }
   }
 
-  ngOnDestroy() {
-    if (this.scanningActive) {
-      this.stopScanning();
+  onCamerasFound(devices: MediaDeviceInfo[]) {
+    this.availableDevices = devices;
+    if (devices && devices.length > 0) {
+      // Select the first camera as default
+      this.currentDevice = devices[0];
     }
+    this.isLoading = false;
   }
 
-  async startScanning() {
-    // Check if running in browser environment
-    if (typeof window === 'undefined') {
-      this.errorMessage = 'QR Scanner is not available in this environment.';
-      return;
-    }
-
-    if (!this.video) {
-      return;
-    }
-
-    try {
-      await this.qrScannerService.setupVideoStream(this.video.nativeElement, this.selectedDeviceId);
-      this.scanningActive = true;
-      this.errorMessage = null;
-
-      // Start continuous scanning
-      this.continuousScan();
-    } catch (error) {
-      this.errorMessage = 'Failed to start camera.';
-      console.error('Error starting camera:', error);
-    }
+  onCameraError(error: any) {
+    this.errorMessage = 'Camera error: ' + error.message || 'Unable to access camera';
+    console.error('Camera error:', error);
+    this.isLoading = false;
   }
-
-  stopScanning() {
-    if (this.video) {
-      this.qrScannerService.stopVideoStream(this.video.nativeElement);
-    }
-    this.scanningActive = false;
+    
+  onScanSuccess(content: string) {
+    this.qrResult = content;
+    this.processScanResult(content);
   }
-
-  private async continuousScan() {
-    if (!this.scanningActive) return;
-
-    try {
-      const result = await this.qrScannerService.scanQrFromVideo(this.video.nativeElement);
-      if (result) {
-        this.qrResult = result;
-        this.processScanResult(result);
-        this.stopScanning(); // Stop scanning once we get a result
-      } else {
-        // Continue scanning after delay
-        setTimeout(() => this.continuousScan(), environment.qrScanner.scanInterval);
-      }
-    } catch (error) {
-      console.error('Error during scanning:', error);
-      setTimeout(() => this.continuousScan(), environment.qrScanner.scanInterval);
-    }
+    
+  onDeviceChange(event: Event) {
+    // Handle device change if needed
+    console.log('Camera device changed');
+  }
+  
+  onDeviceSelected(event: any) {
+    const selectedIndex = event.target.value;
+    this.currentDevice = this.availableDevices[selectedIndex];
   }
 
   private processScanResult(data: string) {
@@ -124,28 +85,6 @@ export class QrScannerComponent implements OnInit, OnDestroy {
         // Display other types of data
         alert(`QR Code Data: ${data}`);
       }
-    }
-  }
-
-  onDeviceChange(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    this.selectedDeviceId = target.value;
-  }
-
-  async switchCamera() {
-    if (this.scanningActive) {
-      this.stopScanning();
-    }
-
-    // Cycle through available cameras
-    if (this.videoDevices.length > 1 && this.selectedDeviceId) {
-      const currentIndex = this.videoDevices.findIndex(
-        (device) => device.deviceId === this.selectedDeviceId
-      );
-      const nextIndex = (currentIndex + 1) % this.videoDevices.length;
-      this.selectedDeviceId = this.videoDevices[nextIndex].deviceId;
-
-      await this.startScanning();
     }
   }
 
